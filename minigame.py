@@ -72,8 +72,7 @@ targets = []
 searched = False
 while is_pressed('=') == False:
     with mss.mss() as sct:
-        monitor = {"left": 700, "top": 720, "width": 500, "height": 150}
-
+        monitor = {"left": 740, "top": 720, "width": 420, "height": 150}
         spacebar_img_rgb = np.array(sct.grab(monitor))
         spacebar_img_gray = cv2.cvtColor(spacebar_img_rgb, cv2.COLOR_BGR2GRAY)
 
@@ -105,8 +104,15 @@ while is_pressed('=') == False:
             if not targets:
                 sleep(starting_delay_seconds)
 
-            arrow_rgb = np.array(sct.grab(monitor))
+            arrow_monitor = {"left": 740, "top": 740, "width": 420, "height": 30}
+            arrow_rgb = np.array(sct.grab(arrow_monitor))
             arrow_gray = cv2.cvtColor(arrow_rgb, cv2.COLOR_BGR2GRAY)
+            arrow_monitor_str = "monitor-{left}x{top}_{width}x{height}".format(**monitor)
+
+            # save arrow_gray to image
+            arrow_gray_output = "sct-arrow-gray-{monitor}_{timestamp}.png".format(monitor=arrow_monitor_str, timestamp=timestamp_str)
+
+            cv2.imwrite(arrow_gray_output, arrow_gray)
 
             if not searched:
                 searched = True
@@ -121,6 +127,7 @@ while is_pressed('=') == False:
                 location = arrow_loc[0] + arrow_middle_offset
                 print('location', location)
                 for idx, target in enumerate(targets):
+                    print('target', target, ' .location', location)
                     if location <= target[1] and location >= target[0]:
                         targets.remove(targets[idx])
                         automate_space()
