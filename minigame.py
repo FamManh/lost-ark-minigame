@@ -6,6 +6,7 @@ from keyboard import is_pressed
 from matplotlib import pyplot  as plt
 from pyautogui import keyUp, keyDown
 from time import sleep
+import datetime
 
 config = ConfigParser()
 config.read('config.ini')
@@ -16,7 +17,7 @@ target_range_left_offset = float(config["DEFAULT"]['target_range_left_offset'])
 target_range_right_offset = float(config["DEFAULT"]['target_range_right_offset'])
 
 MINIGAME_ARROW = cv2.imread("./assets/minigame_arrow.png", 0)
-NORMAL_SACEBAR = cv2.imread("./assets/normal_spacebar.png", 0)
+NORMAL_SACEBAR = cv2.imread("./assets/normal_spacebar1.png", 0)
 GLOW_SPACEBAR = cv2.imread("./assets/glow_spacebar.png", 0)
 
 print("""
@@ -39,14 +40,23 @@ def search_targets() -> list:
     for each individual zones. Add offsets to account for latency between the program and
     the game. 
     """
-    excavation_bar_rgb = np.array(sct.grab({"left": 725, "top": 720, "width": 450, "height": 20}))
+
+    monitor = {"left": 740, "top": 720, "width": 420, "height": 20}
+    # output = "sct-{top}x{left}_{width}x{height}.png".format(**monitor)
+
+    excavation_bar = sct.grab(monitor)
+    excavation_bar_rgb = np.array(excavation_bar)
     excavation_bar_gray = cv2.cvtColor(excavation_bar_rgb, cv2.COLOR_BGR2GRAY)
 
     _, bar_bw = cv2.threshold(excavation_bar_gray, 70, 255, cv2.THRESH_BINARY)
     contours, _ = cv2.findContours(bar_bw, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
     targets = []
     for target in contours:
+        timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        monitor_str = "monitor-{left}x{top}_{width}x{height}".format(**monitor)
+        output = "target-{monitor}_{timestamp}.png".format(monitor=monitor_str, timestamp=timestamp_str)
+        mss.tools.to_png(excavation_bar.rgb, excavation_bar.size, output=output)
+
         if cv2.contourArea(target) >= 100:
             M = cv2.moments(target)
             x = int(M['m10']/M['m00'])
@@ -62,33 +72,54 @@ targets = []
 searched = False
 while is_pressed('=') == False:
     with mss.mss() as sct:
-        spacebar_img_rgb = np.array(sct.grab({"left": 880, "top": 775, "width": 150, "height": 90}))
+        monitor = {"left": 700, "top": 720, "width": 500, "height": 150}
+
+        spacebar_img_rgb = np.array(sct.grab(monitor))
         spacebar_img_gray = cv2.cvtColor(spacebar_img_rgb, cv2.COLOR_BGR2GRAY)
+
 
         # Determine whether the game have started  by searching for the spacebar assets.
         normal_res = cv2.matchTemplate(spacebar_img_gray, NORMAL_SACEBAR, cv2.TM_CCOEFF_NORMED)
         glow_res = cv2.matchTemplate(spacebar_img_gray, GLOW_SPACEBAR, cv2.TM_CCOEFF_NORMED)
+        # print(normal_res, glow_res)
 
         _, n_confidence, _, max_loc = cv2.minMaxLoc(normal_res)
         _, g_confidence, _, max_loc = cv2.minMaxLoc(glow_res)
 
         if n_confidence >= 0.8 or g_confidence >= 0.8:
+
+            # Format the monitor and timestamp
+            monitor_str = "monitor-{left}x{top}_{width}x{height}".format(**monitor)
+
+            # Combine the monitor and timestamp to create the output filename
+            # output = "sct-{top}x{left}_{width}x{height}x{}.png".format(**monitor)
+            timestamp_str = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            output = "sct-{monitor}_{timestamp}.png".format(monitor=monitor_str, timestamp=timestamp_str)
+            sct_img = sct.grab(monitor)
+
+            mss.tools.to_png(sct_img.rgb, sct_img.size, output=output)
+
+        if n_confidence >= 0.8 or g_confidence >= 0.8:
+            print("Game has started...", n_confidence, g_confidence)
             # Let the game load before we do anything
             if not targets:
                 sleep(starting_delay_seconds)
 
-            arrow_rgb = np.array(sct.grab({"left": 725, "top": 740, "width": 450, "height": 30}))
+            arrow_rgb = np.array(sct.grab(monitor))
             arrow_gray = cv2.cvtColor(arrow_rgb, cv2.COLOR_BGR2GRAY)
 
             if not searched:
                 searched = True
                 targets = search_targets()
+                print("Targets found!", targets)
 
             arrow_res = cv2.matchTemplate(arrow_gray, MINIGAME_ARROW, cv2.TM_CCOEFF_NORMED)
             _, arrow_confidence, _, arrow_loc = cv2.minMaxLoc(arrow_res)
+            print('arrow_confidence', arrow_confidence, arrow_loc)
             if arrow_confidence >= 0.75:
                 # Offset to the middle of arrow coordinate.
                 location = arrow_loc[0] + arrow_middle_offset
+                print('location', location)
                 for idx, target in enumerate(targets):
                     if location <= target[1] and location >= target[0]:
                         targets.remove(targets[idx])
