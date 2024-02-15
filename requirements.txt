@@ -4,3 +4,5 @@ matplotlib==3.7.1
 keyboard==0.13.5
 opencv-python==4.7.0.72
 mss==7.0.1
+chime==0.7.0
+PyDirectInput==1.0.4
