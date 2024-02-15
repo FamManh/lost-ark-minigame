@@ -3,7 +3,7 @@ import mss
 import numpy as np
 from configparser import ConfigParser
 from keyboard import is_pressed
-from pyautogui import keyDown, keyUp, press
+from pydirectinput import keyDown, keyUp, press
 from time import sleep
 import datetime
 import chime
@@ -44,10 +44,9 @@ def annoy():
 
 def automate_space():
     """Press and release the spacebar."""
-    # keyDown('space')
-    # sleep(0.01)
-    # keyUp('space')
-    press('space')
+    keyDown('space')
+    sleep(0.1)
+    keyUp('space')
     annoy()
 
 
